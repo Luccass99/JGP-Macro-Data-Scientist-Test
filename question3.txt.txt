@@ -1,0 +1,42 @@
+
+Para automatizar o processo de extração de dados da inflação, siga estas etapas detalhadas:
+
+1. Criação de um Script Python:
+   - Utilize o script `question1.py` para extrair dados da API do Bureau of Labor Statistics (BLS), processar os dados e salvar em um arquivo CSV.
+
+2. Agendamento da Execução do Script:
+   - No Linux (usando cron jobs):
+     - Edite os cron jobs usando `crontab -e` e adicione a seguinte linha para executar o script todo dia 1º de cada mês às 3h da manhã:
+       0 3 1 * * /usr/bin/python3 /caminho/para/seu/script/question1.py
+   - No Windows (usando Tarefas Agendadas):
+     - Abra o "Agendador de Tarefas", crie uma nova tarefa básica e configure-a para ser executada mensalmente. Selecione "Iniciar um programa" e navegue até o seu script Python `question1.py`.
+
+3. Notificação Após a Execução:
+   - Adicione código no script Python para enviar notificações por e-mail após a execução bem-sucedida usando a biblioteca `smtplib` do Python. 
+   - Exemplo:
+     import smtplib
+     from email.mime.text import MIMEText
+     from email.mime.multipart import MIMEMultipart
+
+     def send_email(subject, body, to_email):
+         from_email = "seu_email@gmail.com"
+         from_password = "sua_senha"
+         
+         msg = MIMEMultipart()
+         msg['From'] = from_email
+         msg['To'] = to_email
+         msg['Subject'] = subject
+
+         msg.attach(MIMEText(body, 'plain'))
+         
+         server = smtplib.SMTP('smtp.gmail.com', 587)
+         server.starttls()
+         server.login(from_email, from_password)
+         text = msg.as_string()
+         server.sendmail(from_email, to_email, text)
+         server.quit()
+
+     send_email("Execução do Script Completa", "O script question1.py foi executado com sucesso e o arquivo CSV foi atualizado.", "destinatario_email@gmail.com")
+
+4. Armazenamento dos Dados:
+   - Além de salvar os dados em um arquivo CSV, você pode armazená-los em um banco de dados relacional (como MySQL, PostgreSQL) ou em um banco de dados NoSQL (como MongoDB) para facilitar consultas e análises futuras. Utilize uma biblioteca como `SQLAlchemy` para interagir com bancos de dados relacionais ou `pymongo` para MongoDB.
