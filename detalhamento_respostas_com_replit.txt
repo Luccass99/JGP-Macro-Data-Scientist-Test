@@ -1,0 +1,168 @@
+
+# Detalhamento das Respostas para o Teste de Seleção de Estágio em Ciência de Dados da JGP
+
+Este documento detalha o processo e as respostas desenvolvidas para o teste de seleção de estágio em Ciência de Dados na JGP. Todas as etapas foram implementadas utilizando a plataforma Replit.
+
+## Questão 1
+
+**Objetivo:** Obter a série de inflação dos EUA (CPI) do Bureau of Labor Statistics (BLS) via API, processar os dados e formatá-los para que as colunas correspondam às séries e cada linha represente uma observação ao longo do tempo. Salvar o resultado em um arquivo CSV.
+
+**Etapas:**
+1. **Configuração da API:** Obtivemos a chave da API e configuramos o endpoint para acessar as séries de dados necessárias.
+2. **Requisição dos Dados:** Utilizamos a biblioteca `requests` para fazer a requisição dos dados da API do BLS.
+3. **Processamento dos Dados:** 
+    - Extraímos as informações relevantes das respostas da API.
+    - Convertimos os dados em um DataFrame do pandas para melhor manipulação.
+    - Ajustamos o formato das colunas para garantir que cada linha representasse uma observação mensal.
+4. **Salvamento dos Dados:** Salvamos o DataFrame processado em um arquivo CSV chamado `inflation_data.csv`.
+
+**Código:**
+```python
+import requests
+import pandas as pd
+
+def get_cpi_data(api_key, series_id, start_year, end_year):
+    url = f'https://api.bls.gov/publicAPI/v2/timeseries/data/{series_id}'
+    headers = {'Content-type': 'application/json'}
+    data = {
+        "seriesid": [series_id],
+        "startyear": start_year,
+        "endyear": end_year,
+        "registrationkey": api_key
+    }
+    response = requests.post(url, json=data, headers=headers)
+    return response.json()
+
+def process_data(data):
+    series_data = data['Results']['series'][0]['data']
+    df = pd.DataFrame(series_data)
+    df['date'] = pd.to_datetime(df['year'] + df['period'].str[1:] + '01')
+    df = df[['date', 'value']]
+    return df
+
+def main():
+    api_key = 'YOUR_API_KEY'
+    series_ids = {
+        'CPI All items, seasonally adjusted': 'CPIAUCSL',
+        'CPI All items, less food and energy, seasonally adjusted': 'CPILFESL',
+        'CPI Gasoline (all types), seasonally adjusted': 'CUUR0000SETB01'
+    }
+    start_year = '2019'
+    end_year = '2024'
+    
+    all_data = {}
+    for series_name, series_id in series_ids.items():
+        data = get_cpi_data(api_key, series_id, start_year, end_year)
+        df = process_data(data)
+        all_data[series_name] = df
+
+    merged_df = pd.DataFrame()
+    for series_name, df in all_data.items():
+        if merged_df.empty:
+            merged_df = df
+            merged_df.rename(columns={'value': series_name}, inplace=True)
+        else:
+            merged_df = merged_df.merge(df, on='date')
+            merged_df.rename(columns={'value': series_name}, inplace=True)
+    
+    merged_df.to_csv('inflation_data.csv', index=False)
+    print("Arquivo inflation_data.csv criado com sucesso.")
+
+if __name__ == "__main__":
+    main()
+```
+
+## Questão 2
+
+**Objetivo:** Utilizando Plotly, desenvolver um gráfico que mostre a série de preços ajustados sazonalmente para todos os itens, menos alimentos e energia, com variação percentual ano a ano usando os dados mensais de 2019 até o presente. Manter a frequência mensal no gráfico.
+
+**Etapas:**
+1. **Leitura dos Dados:** Carregamos os dados do arquivo CSV `inflation_data.csv`.
+2. **Cálculo da Variação Percentual:** Calculamos a variação percentual ano a ano da série de preços.
+3. **Criação do Gráfico:** Utilizamos a biblioteca Plotly para criar o gráfico da variação percentual.
+
+**Código:**
+```python
+import pandas as pd
+import plotly.express as px
+
+# Carregar os dados
+df = pd.read_csv('inflation_data.csv')
+
+# Calcular a variação percentual ano a ano
+df['Yearly Change'] = df['CPI All items, less food and energy, seasonally adjusted'].pct_change(periods=12) * 100
+
+# Criar o gráfico
+fig = px.line(df, x='date', y='Yearly Change', title='Year-over-Year Change in CPI (All items, less food and energy)')
+fig.update_xaxes(rangeslider_visible=True)
+fig.write_html('inflation_chart.html')
+
+print("Gráfico gerado com sucesso.")
+```
+
+## Questão 3
+
+**Objetivo:** Descrever em palavras como automatizar o processo de extração dos dados.
+
+**Descrição:**
+1. **Agendamento de Tarefas:** Utilizar um agendador de tarefas como `cron` no Linux ou o `Task Scheduler` no Windows para executar o script periodicamente.
+2. **Automação com Python:** Escrever um script Python que faça as requisições à API, processe os dados e salve o resultado em um arquivo CSV.
+3. **Notificações:** Implementar notificações via email ou serviços de mensagens para alertar sobre a conclusão do processo ou possíveis erros.
+
+**Ferramentas:**
+- **Cron (Linux):** Para agendar a execução do script em intervalos regulares.
+- **Task Scheduler (Windows):** Para agendar tarefas de forma similar no ambiente Windows.
+- **Biblioteca smtplib do Python:** Para enviar emails de notificação.
+
+## Questão 4
+
+**Objetivo:** Explicar como relacionar a série de preços (todos os itens) com a série de preços da gasolina.
+
+**Descrição:**
+1. **Correlação:** Calcular a correlação entre as duas séries de preços utilizando a função `corr()` do pandas.
+2. **Análise de Tendências:** Analisar as tendências das duas séries para identificar padrões comuns ou divergências.
+3. **Visualização:** Criar gráficos para visualizar a relação entre as séries de preços.
+
+**Código:**
+```python
+import pandas as pd
+
+# Carregar os dados
+df = pd.read_csv('inflation_data.csv')
+
+# Calcular a correlação
+correlation = df['CPI All items, seasonally adjusted'].corr(df['CPI Gasoline (all types), seasonally adjusted'])
+print(f'A correlação entre "Todos os itens" e "Gasolina" é: {correlation}')
+```
+
+## Questão Bônus
+
+**Objetivo:** Implementar uma aplicação utilizando FastAPI para permitir requisições aos dados armazenados no arquivo CSV.
+
+**Etapas:**
+1. **Configuração do Ambiente:** Instalar as dependências necessárias (`fastapi` e `uvicorn`).
+2. **Implementação da API:** Escrever os endpoints para acessar os dados.
+3. **Execução da API:** Rodar o servidor FastAPI para disponibilizar os endpoints.
+
+**Código:**
+```python
+from fastapi import FastAPI
+import pandas as pd
+
+app = FastAPI()
+
+@app.get("/")
+def read_root():
+    return {"message": "Para acessar os dados, vá para /data"}
+
+@app.get("/data")
+def get_data():
+    df = pd.read_csv('inflation_data.csv')
+    return df.to_dict(orient='records')
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+```
+
+**Observação:** Todas as etapas foram implementadas utilizando a plataforma Replit, que facilitou a execução e teste dos códigos em um ambiente online, sem a necessidade de configuração local.
